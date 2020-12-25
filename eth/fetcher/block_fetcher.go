@@ -334,8 +334,10 @@ func (f *BlockFetcher) loop() {
 				f.forgetBlock(hash)
 				continue
 			}
+			log.Error("Start insert block in BlockFetcher loop")
 			f.insert(op.origin, op.block)
 		}
+		log.Error("BlockFetcher queue is empty")
 		// Wait for an outside event to occur
 		select {
 		case <-f.quit:
@@ -663,7 +665,7 @@ func (f *BlockFetcher) insert(peer string, block *types.Block) {
 	hash := block.Hash()
 
 	// Run the import on a new thread
-	log.Debug("Importing propagated block", "peer", peer, "number", block.Number(), "hash", hash)
+	log.Info("Importing propagated block", "peer", peer, "number", block.Number(), "hash", hash)
 	go func() {
 		defer func() { f.done <- hash }()
 
@@ -692,7 +694,7 @@ func (f *BlockFetcher) insert(peer string, block *types.Block) {
 		}
 		// Run the actual import and log any issues
 		if _, err := f.insertChain(types.Blocks{block}); err != nil {
-			log.Debug("Propagated block import failed", "peer", peer, "number", block.Number(), "hash", hash, "err", err)
+			log.Error("Propagated block import failed", "peer", peer, "number", block.Number(), "hash", hash, "err", err)
 			return
 		}
 		// If import succeeded, broadcast the block

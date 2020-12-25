@@ -161,12 +161,17 @@ func (sub *Subscription) Unsubscribe() {
 			// the eventLoop broadcast method to deadlock when writing to the
 			// filter event channel while the subscription loop is waiting for
 			// this method to return (and thus not reading these events).
+			log.Error("====debug reenter uninstallLoop", "id", sub.ID)
 			select {
 			case sub.es.uninstall <- sub.f:
+				log.Error("====debug break uninstallLoop", "id", sub.ID)
 				break uninstallLoop
 			case <-sub.f.logs:
+				log.Error("====debug consume log", "id", sub.ID)
 			case <-sub.f.hashes:
+				log.Error("====debug consume hash", "id", sub.ID)
 			case <-sub.f.headers:
+				log.Error("====debug consume header", "id", sub.ID)
 			}
 		}
 
@@ -347,7 +352,10 @@ func (es *EventSystem) handleTxsEvent(filters filterIndex, ev core.NewTxsEvent) 
 		hashes = append(hashes, tx.Hash())
 	}
 	for _, f := range filters[PendingTransactionsSubscription] {
+		log.Error("====debug start handleTxsEvent", "id", f.id)
 		f.hashes <- hashes
+		log.Error("====debug end handleTxsEvent", "id", f.id)
+
 	}
 }
 
@@ -458,6 +466,7 @@ func (es *EventSystem) eventLoop() {
 	for {
 		select {
 		case ev := <-es.txsCh:
+			log.Error("====debug handle txs event")
 			es.handleTxsEvent(index, ev)
 		case ev := <-es.logsCh:
 			es.handleLogs(index, ev)
@@ -479,6 +488,7 @@ func (es *EventSystem) eventLoop() {
 			close(f.installed)
 
 		case f := <-es.uninstall:
+			log.Error("====debug get uninstall notice and do close f.err", "id", f.id)
 			if f.typ == MinedAndPendingLogsSubscription {
 				// the type are logs and pending logs subscriptions
 				delete(index[LogsSubscription], f.id)

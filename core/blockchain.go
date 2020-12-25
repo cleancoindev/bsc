@@ -1335,7 +1335,11 @@ func (bc *BlockChain) writeKnownBlock(block *types.Block) error {
 // WriteBlockWithState writes the block and all associated state to the database.
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, logs []*types.Log, state *state.StateDB, emitHeadEvent bool) (status WriteStatus, err error) {
 	bc.chainmu.Lock()
-	defer bc.chainmu.Unlock()
+	log.Error("Lock lock by WriteBlockWithState")
+	defer func() {
+		bc.chainmu.Unlock()
+		log.Error("Lock unlock by WriteBlockWithState")
+	}()
 
 	return bc.writeBlockWithState(block, receipts, logs, state, emitHeadEvent)
 }
@@ -1528,8 +1532,10 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 	// Pre-checks passed, start the full block imports
 	bc.wg.Add(1)
 	bc.chainmu.Lock()
+	log.Error("lock fetch by InsertChain")
 	n, err := bc.insertChain(chain, true)
 	bc.chainmu.Unlock()
+	log.Error("lock unlock by InsertChain")
 	bc.wg.Done()
 
 	return n, err
@@ -1594,7 +1600,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 			if localTd.Cmp(externTd) < 0 {
 				break
 			}
-			log.Debug("Ignoring already known block", "number", block.Number(), "hash", block.Hash())
+			log.Error("Ignoring already known block", "number", block.Number(), "hash", block.Hash())
 			stats.ignored++
 
 			block, err = it.next()
@@ -1608,7 +1614,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 		// `insertChain` while a part of them have higher total difficulty than current
 		// head full block(new pivot point).
 		for block != nil && err == ErrKnownBlock {
-			log.Debug("Writing previously known block", "number", block.Number(), "hash", block.Hash())
+			log.Error("Writing previously known block", "number", block.Number(), "hash", block.Hash())
 			if err := bc.writeKnownBlock(block); err != nil {
 				return it.index, err
 			}
@@ -1621,13 +1627,13 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	switch {
 	// First block is pruned, insert as sidechain and reorg only if TD grows enough
 	case err == consensus.ErrPrunedAncestor:
-		log.Debug("Pruned ancestor, inserting as sidechain", "number", block.Number(), "hash", block.Hash())
+		log.Error("Pruned ancestor, inserting as sidechain", "number", block.Number(), "hash", block.Hash())
 		return bc.insertSideChain(block, it)
 
 	// First block is future, shove it (and all children) to the future queue (unknown ancestor)
 	case err == consensus.ErrFutureBlock || (err == consensus.ErrUnknownAncestor && bc.futureBlocks.Contains(it.first().ParentHash())):
 		for block != nil && (it.index == 0 || err == consensus.ErrUnknownAncestor) {
-			log.Debug("Future block, postponing import", "number", block.Number(), "hash", block.Hash())
+			log.Error("Future block, postponing import", "number", block.Number(), "hash", block.Hash())
 			if err := bc.addFutureBlock(block); err != nil {
 				return it.index, err
 			}
@@ -1650,7 +1656,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	for ; block != nil && err == nil || err == ErrKnownBlock; block, err = it.next() {
 		// If the chain is terminating, stop processing blocks
 		if atomic.LoadInt32(&bc.procInterrupt) == 1 {
-			log.Debug("Premature abort during blocks processing")
+			log.Error("Premature abort during blocks processing")
 			break
 		}
 		// If the header is a banned one, straight out abort
@@ -2172,7 +2178,11 @@ func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 
 	// Make sure only one thread manipulates the chain at once
 	bc.chainmu.Lock()
-	defer bc.chainmu.Unlock()
+	log.Error("lock fetch by InsertHeaderChain")
+	defer func() {
+		bc.chainmu.Unlock()
+		log.Error("lock unlcok by InsertHeaderChain")
+	}()
 
 	bc.wg.Add(1)
 	defer bc.wg.Done()
