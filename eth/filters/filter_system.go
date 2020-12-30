@@ -165,6 +165,7 @@ func (sub *Subscription) Unsubscribe() {
 			select {
 			case sub.es.uninstall <- sub.f:
 				log.Error("====debug break uninstallLoop", "id", sub.ID)
+				time.Sleep(3 * time.Second)
 				break uninstallLoop
 			case <-sub.f.logs:
 				log.Error("====debug consume log", "id", sub.ID)
@@ -179,6 +180,18 @@ func (sub *Subscription) Unsubscribe() {
 		// this ensures that the manager won't use the event channel which
 		// will probably be closed by the client asap after this method returns.
 		<-sub.Err()
+	drainLoop:
+		for {
+			select {
+			case <-sub.f.logs:
+			case <-sub.f.hashes:
+			case <-sub.f.headers:
+			default:
+				break drainLoop
+			}
+		}
+		log.Error("====debug finally exist", "id", sub.ID)
+
 	})
 }
 
