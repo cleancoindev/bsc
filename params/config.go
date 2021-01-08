@@ -228,6 +228,7 @@ var (
 		RamanujanBlock:      big.NewInt(0),
 		NielsBlock:          big.NewInt(0),
 		MirrorSyncBlock:     big.NewInt(4000000),
+		ForceFailAck:        big.NewInt(6000000),
 		Parlia: &ParliaConfig{
 			Period: 3,
 			Epoch:  200,
@@ -248,6 +249,7 @@ var (
 		RamanujanBlock:      big.NewInt(1010000),
 		NielsBlock:          big.NewInt(1014369),
 		MirrorSyncBlock:     big.NewInt(5000000),
+		ForceFailAck:        big.NewInt(6000000),
 		Parlia: &ParliaConfig{
 			Period: 3,
 			Epoch:  200,
@@ -268,6 +270,7 @@ var (
 		RamanujanBlock:      big.NewInt(50),
 		NielsBlock:          big.NewInt(0),
 		MirrorSyncBlock:     big.NewInt(100),
+		ForceFailAck:        big.NewInt(1000),
 		Parlia: &ParliaConfig{
 			Period: 3,
 			Epoch:  200,
@@ -279,16 +282,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, new(EthashConfig), nil, nil}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, nil, new(EthashConfig), nil, nil}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, nil, nil,  &CliqueConfig{Period: 0, Epoch: 30000}, nil}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, new(EthashConfig), nil, nil}
+	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, nil, new(EthashConfig), nil, nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 )
 
@@ -363,6 +366,7 @@ type ChainConfig struct {
 	RamanujanBlock      *big.Int `json:"ramanujanBlock,omitempty" toml:",omitempty"`      // ramanujanBlock switch block (nil = no fork, 0 = already activated)
 	NielsBlock          *big.Int `json:"nielsBlock,omitempty" toml:",omitempty"`          // nielsBlock switch block (nil = no fork, 0 = already activated)
 	MirrorSyncBlock     *big.Int `json:"mirrorSyncBlock,omitempty" toml:",omitempty"`     // mirrorSyncBlock switch block (nil = no fork, 0 = already activated)
+	ForceFailAck        *big.Int `json:"forceFailAck,omitempty" toml:",omitempty"`        // forceFailAck switch block (nil = no fork, 0 = already activated)
 
 	// Various consensus engines
 	Ethash *EthashConfig `json:"ethash,omitempty" toml:",omitempty"`
@@ -429,6 +433,7 @@ func (c *ChainConfig) String() string {
 		c.RamanujanBlock,
 		c.NielsBlock,
 		c.MirrorSyncBlock,
+		c.ForceFailAck,
 		engine,
 	)
 }
@@ -498,6 +503,16 @@ func (c *ChainConfig) IsOnMirrorSync(num *big.Int) bool {
 	return configNumEqual(c.MirrorSyncBlock, num)
 }
 
+// IsForceFailAck returns whether num is either equal to the MirrorSync fork block or greater.
+func (c *ChainConfig) IsForceFailAck(num *big.Int) bool {
+	return isForked(c.ForceFailAck, num)
+}
+
+// IsOnForceFailAck returns whether num is equal to the MirrorSync fork block
+func (c *ChainConfig) IsOnForceFailAck(num *big.Int) bool {
+	return configNumEqual(c.ForceFailAck, num)
+}
+
 
 // IsMuirGlacier returns whether num is either equal to the Muir Glacier (EIP-2384) fork block or greater.
 func (c *ChainConfig) IsMuirGlacier(num *big.Int) bool {
@@ -559,6 +574,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{"muirGlacierBlock", c.MuirGlacierBlock},
 		{"ramanujanBlock", c.RamanujanBlock},
 		{"mirrorSyncBlock", c.MirrorSyncBlock},
+		{"forceFailAck", c.ForceFailAck},
 	} {
 		if lastFork.name != "" {
 			// Next one must be higher number
@@ -623,6 +639,9 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 	}
 	if isForkIncompatible(c.MirrorSyncBlock, newcfg.MirrorSyncBlock, head) {
 		return newCompatError("mirrorSync fork block", c.MirrorSyncBlock, newcfg.MirrorSyncBlock)
+	}
+	if isForkIncompatible(c.ForceFailAck, newcfg.ForceFailAck, head) {
+		return newCompatError("force fail ack fork block", c.ForceFailAck, newcfg.ForceFailAck)
 	}
 	return nil
 }
