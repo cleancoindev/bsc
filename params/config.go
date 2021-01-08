@@ -228,7 +228,7 @@ var (
 		RamanujanBlock:      big.NewInt(0),
 		NielsBlock:          big.NewInt(0),
 		MirrorSyncBlock:     big.NewInt(4000000),
-		ForceFailAck:        big.NewInt(6000000),
+		ForceFailAckBlock:   big.NewInt(6000000),
 		Parlia: &ParliaConfig{
 			Period: 3,
 			Epoch:  200,
@@ -249,7 +249,7 @@ var (
 		RamanujanBlock:      big.NewInt(1010000),
 		NielsBlock:          big.NewInt(1014369),
 		MirrorSyncBlock:     big.NewInt(5000000),
-		ForceFailAck:        big.NewInt(6000000),
+		ForceFailAckBlock:   big.NewInt(6000000),
 		Parlia: &ParliaConfig{
 			Period: 3,
 			Epoch:  200,
@@ -270,7 +270,7 @@ var (
 		RamanujanBlock:      big.NewInt(50),
 		NielsBlock:          big.NewInt(0),
 		MirrorSyncBlock:     big.NewInt(100),
-		ForceFailAck:        big.NewInt(1000),
+		ForceFailAckBlock:   big.NewInt(1000),
 		Parlia: &ParliaConfig{
 			Period: 3,
 			Epoch:  200,
@@ -363,10 +363,10 @@ type ChainConfig struct {
 	IstanbulBlock       *big.Int `json:"istanbulBlock,omitempty" toml:",omitempty"`       // Istanbul switch block (nil = no fork, 0 = already on istanbul)
 	MuirGlacierBlock    *big.Int `json:"muirGlacierBlock,omitempty" toml:",omitempty"`    // Eip-2384 (bomb delay) switch block (nil = no fork, 0 = already activated)
 	EWASMBlock          *big.Int `json:"ewasmBlock,omitempty" toml:",omitempty"`          // EWASM switch block (nil = no fork, 0 = already activated)
-	RamanujanBlock      *big.Int `json:"ramanujanBlock,omitempty" toml:",omitempty"`      // ramanujanBlock switch block (nil = no fork, 0 = already activated)
-	NielsBlock          *big.Int `json:"nielsBlock,omitempty" toml:",omitempty"`          // nielsBlock switch block (nil = no fork, 0 = already activated)
-	MirrorSyncBlock     *big.Int `json:"mirrorSyncBlock,omitempty" toml:",omitempty"`     // mirrorSyncBlock switch block (nil = no fork, 0 = already activated)
-	ForceFailAck        *big.Int `json:"forceFailAck,omitempty" toml:",omitempty"`        // forceFailAck switch block (nil = no fork, 0 = already activated)
+	RamanujanBlock    *big.Int `json:"ramanujanBlock,omitempty" toml:",omitempty"`        // ramanujanBlock switch block (nil = no fork, 0 = already activated)
+	NielsBlock        *big.Int `json:"nielsBlock,omitempty" toml:",omitempty"`            // nielsBlock switch block (nil = no fork, 0 = already activated)
+	MirrorSyncBlock   *big.Int `json:"mirrorSyncBlock,omitempty" toml:",omitempty"`       // mirrorSyncBlock switch block (nil = no fork, 0 = already activated)
+	ForceFailAckBlock *big.Int `json:"forceFailAck,omitempty" toml:",omitempty"`          // forceFailAck switch block (nil = no fork, 0 = already activated)
 
 	// Various consensus engines
 	Ethash *EthashConfig `json:"ethash,omitempty" toml:",omitempty"`
@@ -433,7 +433,7 @@ func (c *ChainConfig) String() string {
 		c.RamanujanBlock,
 		c.NielsBlock,
 		c.MirrorSyncBlock,
-		c.ForceFailAck,
+		c.ForceFailAckBlock,
 		engine,
 	)
 }
@@ -505,12 +505,12 @@ func (c *ChainConfig) IsOnMirrorSync(num *big.Int) bool {
 
 // IsForceFailAck returns whether num is either equal to the MirrorSync fork block or greater.
 func (c *ChainConfig) IsForceFailAck(num *big.Int) bool {
-	return isForked(c.ForceFailAck, num)
+	return isForked(c.ForceFailAckBlock, num)
 }
 
 // IsOnForceFailAck returns whether num is equal to the MirrorSync fork block
 func (c *ChainConfig) IsOnForceFailAck(num *big.Int) bool {
-	return configNumEqual(c.ForceFailAck, num)
+	return configNumEqual(c.ForceFailAckBlock, num)
 }
 
 
@@ -574,7 +574,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{"muirGlacierBlock", c.MuirGlacierBlock},
 		{"ramanujanBlock", c.RamanujanBlock},
 		{"mirrorSyncBlock", c.MirrorSyncBlock},
-		{"forceFailAck", c.ForceFailAck},
+		{"forceFailAck", c.ForceFailAckBlock},
 	} {
 		if lastFork.name != "" {
 			// Next one must be higher number
@@ -640,8 +640,8 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 	if isForkIncompatible(c.MirrorSyncBlock, newcfg.MirrorSyncBlock, head) {
 		return newCompatError("mirrorSync fork block", c.MirrorSyncBlock, newcfg.MirrorSyncBlock)
 	}
-	if isForkIncompatible(c.ForceFailAck, newcfg.ForceFailAck, head) {
-		return newCompatError("force fail ack fork block", c.ForceFailAck, newcfg.ForceFailAck)
+	if isForkIncompatible(c.ForceFailAckBlock, newcfg.ForceFailAckBlock, head) {
+		return newCompatError("force fail ack fork block", c.ForceFailAckBlock, newcfg.ForceFailAckBlock)
 	}
 	return nil
 }

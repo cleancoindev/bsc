@@ -135,8 +135,8 @@ type CParamsParams struct {
 	ConstantinopleFixForkBlock *math.HexOrDecimal64  `json:"constantinopleFixForkBlock"`
 	IstanbulBlock              *math.HexOrDecimal64  `json:"istanbulForkBlock"`
 	RamanujanForkBlock         *math.HexOrDecimal64  `json:"ramanujanForkBlock"`
-	MirrorSyncForkBlock	       *math.HexOrDecimal64  `json:"mirrorSyncForkBlock"`
-	ForceFailAckForkBlock	   *math.HexOrDecimal64  `json:"forceFailAckForkBlock"`
+	MirrorSyncForkBlock        *math.HexOrDecimal64  `json:"mirrorSyncForkBlock"`
+	ForceFailAckBlock          *math.HexOrDecimal64  `json:"forceFailAckForkBlock"`
 	ChainID                    *math.HexOrDecimal256 `json:"chainID"`
 	MaximumExtraDataSize       math.HexOrDecimal64   `json:"maximumExtraDataSize"`
 	TieBreakingGas             bool                  `json:"tieBreakingGas"`
@@ -329,7 +329,7 @@ func (api *RetestethAPI) SetChainParams(ctx context.Context, chainParams ChainPa
 		ramanujanBlock      *big.Int
 		mirrorSyncBlock     *big.Int
 
-		forceFailAckForkBlock *big.Int
+		forceFailAckBlock *big.Int
 	)
 	if chainParams.Params.HomesteadForkBlock != nil {
 		homesteadBlock = big.NewInt(int64(*chainParams.Params.HomesteadForkBlock))
@@ -366,7 +366,7 @@ func (api *RetestethAPI) SetChainParams(ctx context.Context, chainParams ChainPa
 		mirrorSyncBlock = big.NewInt(int64(*chainParams.Params.MirrorSyncForkBlock))
 	}
 	if chainParams.Params.MirrorSyncForkBlock != nil {
-		forceFailAckForkBlock = big.NewInt(int64(*chainParams.Params.ForceFailAckForkBlock))
+		forceFailAckBlock = big.NewInt(int64(*chainParams.Params.ForceFailAckBlock))
 	}
 
 	genesis := &core.Genesis{
@@ -384,7 +384,7 @@ func (api *RetestethAPI) SetChainParams(ctx context.Context, chainParams ChainPa
 			IstanbulBlock:       istanbulBlock,
 			RamanujanBlock:      ramanujanBlock,
 			MirrorSyncBlock:     mirrorSyncBlock,
-			ForceFailAck:        forceFailAckForkBlock,
+			ForceFailAckBlock:   forceFailAckBlock,
 		},
 		Nonce:      uint64(chainParams.Genesis.Nonce),
 		Timestamp:  uint64(chainParams.Genesis.Timestamp),
